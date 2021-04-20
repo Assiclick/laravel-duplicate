@@ -2,11 +2,9 @@
 
 namespace Neurony\Duplicate\Traits;
 
-use Closure;
-use Exception;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Model;
 use Neurony\Duplicate\Helpers\RelationHelper;
 use Neurony\Duplicate\Options\DuplicateOptions;
 
@@ -21,16 +19,9 @@ trait HasDuplicates
     protected $duplicateOptions;
 
     /**
-     * Set the options for the HasDuplicates trait.
-     *
-     * @return DuplicateOptions
-     */
-    abstract public function getDuplicateOptions(): DuplicateOptions;
-
-    /**
      * Register a duplicating model event with the dispatcher.
      *
-     * @param Closure|string  $callback
+     * @param  \Closure|string $callback
      * @return void
      */
     public static function duplicating($callback): void
@@ -41,7 +32,7 @@ trait HasDuplicates
     /**
      * Register a duplicated model event with the dispatcher.
      *
-     * @param Closure|string  $callback
+     * @param  \Closure|string $callback
      * @return void
      */
     public static function duplicated($callback): void
@@ -50,10 +41,17 @@ trait HasDuplicates
     }
 
     /**
+     * Set the options for the HasDuplicates trait.
+     *
+     * @return DuplicateOptions
+     */
+    abstract public function getDuplicateOptions(): DuplicateOptions;
+
+    /**
      * Duplicate a model instance and it's relations.
      *
      * @return Model|bool
-     * @throws Exception
+     * @throws \Exception
      */
     public function saveAsDuplicate()
     {
@@ -87,7 +85,7 @@ trait HasDuplicates
             $this->fireModelEvent('duplicated', false);
 
             return $model;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             throw $e;
         }
     }
@@ -96,26 +94,34 @@ trait HasDuplicates
      * Get a replicated instance of the original model's instance.
      *
      * @return Model
-     * @throws Exception
+     * @throws \Exception
      */
     protected function duplicateModel(): Model
     {
         $model = $this->duplicateModelWithExcluding();
         $model = $this->duplicateModelWithUnique($model);
-
-        $model->save();
+        $this->saveModel($model);
 
         return $model;
+    }
+
+    protected function saveModel($model)
+    {
+        if ($this->duplicateOptions->saveQuietly) {
+            return $model->saveQuietly();
+        }
+
+        return $model->save();
     }
 
     /**
      * Duplicate a direct relation.
      * Subsequently save new relation records for the initial model instance.
      *
-     * @param Model $model
-     * @param string $relation
+     * @param  Model      $model
+     * @param  string     $relation
      * @return Model
-     * @throws Exception
+     * @throws \Exception
      */
     protected function duplicateDirectRelation(Model $model, string $relation): Model
     {
@@ -133,10 +139,10 @@ trait HasDuplicates
      * Duplicate a pivoted relation.
      * Subsequently attach new pivot records corresponding to the relation for the initial model instance.
      *
-     * @param Model $model
-     * @param string $relation
+     * @param  Model      $model
+     * @param  string     $relation
      * @return Model
-     * @throws Exception
+     * @throws \Exception
      */
     protected function duplicatePivotedRelation(Model $model, string $relation): Model
     {
@@ -170,6 +176,38 @@ trait HasDuplicates
     }
 
     /**
+     * Get additional pivot attributes that should be saved when duplicating a pivoted relation.
+     * Usually, these are attributes coming from the withPivot() method defined on the relation.
+     *
+     * @param  Model $model
+     * @return array
+     */
+    protected function establishDuplicatablePivotAttributes(Model $model): array
+    {
+        $pivot = $model->pivot;
+
+        return Arr::except($pivot->getAttributes(), [
+            $pivot->getKeyName(),
+            $pivot->getForeignKey(),
+            $pivot->getOtherKey(),
+            $pivot->getCreatedAtColumn(),
+            $pivot->getUpdatedAtColumn(),
+        ]);
+    }
+
+    /**
+     * Instantiate the duplicate options.
+     *
+     * @return void
+     */
+    protected function initDuplicateOptions(): void
+    {
+        if ($this->duplicateOptions === null) {
+            $this->duplicateOptions = $this->getDuplicateOptions();
+        }
+    }
+
+    /**
      * Replicate a model instance, excluding attributes provided in the model's getDuplicateOptions() method.
      *
      * @return Model
@@ -197,7 +235,7 @@ trait HasDuplicates
      * Update a model instance.
      * With unique values for the attributes provided in the model's getDuplicateOptions() method.
      *
-     * @param Model $model
+     * @param  Model $model
      * @return Model
      */
     private function duplicateModelWithUnique(Model $model): Model
@@ -213,7 +251,7 @@ trait HasDuplicates
             $original = $value = $model->{$column};
 
             while (static::withoutGlobalScopes()->where($column, $value)->first()) {
-                $value = $original.' ('.$i++.')';
+                $value = $original . ' (' . $i++ . ')';
 
                 $model->{$column} = $value;
             }
@@ -225,8 +263,8 @@ trait HasDuplicates
     /**
      * Replicate a model relation instance, excluding attributes provided in the model's getDuplicateOptions() method.
      *
-     * @param Model $model
-     * @param string $relation
+     * @param  Model  $model
+     * @param  string $relation
      * @return Model
      */
     private function duplicateRelationWithExcluding(Model $model, string $relation): Model
@@ -247,8 +285,8 @@ trait HasDuplicates
      * Update a relation for the model instance.
      * With unique values for the attributes attributes provided in the model's getDuplicateOptions() method.
      *
-     * @param Model $model
-     * @param string $relation
+     * @param  Model  $model
+     * @param  string $relation
      * @return Model
      */
     private function duplicateRelationWithUnique(Model $model, string $relation): Model
@@ -265,7 +303,7 @@ trait HasDuplicates
                 $original = $value = $model->{$column};
 
                 while ($model->where($column, $value)->first()) {
-                    $value = $original.' ('.$i++.')';
+                    $value = $original . ' (' . $i++ . ')';
 
                     $model->{$column} = $value;
                 }
@@ -273,37 +311,5 @@ trait HasDuplicates
         }
 
         return $model;
-    }
-
-    /**
-     * Get additional pivot attributes that should be saved when duplicating a pivoted relation.
-     * Usually, these are attributes coming from the withPivot() method defined on the relation.
-     *
-     * @param Model $model
-     * @return array
-     */
-    protected function establishDuplicatablePivotAttributes(Model $model): array
-    {
-        $pivot = $model->pivot;
-
-        return Arr::except($pivot->getAttributes(), [
-            $pivot->getKeyName(),
-            $pivot->getForeignKey(),
-            $pivot->getOtherKey(),
-            $pivot->getCreatedAtColumn(),
-            $pivot->getUpdatedAtColumn(),
-        ]);
-    }
-
-    /**
-     * Instantiate the duplicate options.
-     *
-     * @return void
-     */
-    protected function initDuplicateOptions(): void
-    {
-        if ($this->duplicateOptions === null) {
-            $this->duplicateOptions = $this->getDuplicateOptions();
-        }
     }
 }

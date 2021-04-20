@@ -2,7 +2,6 @@
 
 namespace Neurony\Duplicate\Options;
 
-use Exception;
 use Illuminate\Support\Arr;
 
 class DuplicateOptions
@@ -50,22 +49,11 @@ class DuplicateOptions
     private $shouldDuplicateDeeply = true;
 
     /**
-     * Get the value of a property of this class.
+     * Saving A Single Model Without Events.
      *
-     * @param $name
-     * @return mixed
-     * @throws Exception
+     * @var bool
      */
-    public function __get($name)
-    {
-        if (property_exists(static::class, $name)) {
-            return $this->{$name};
-        }
-
-        throw new Exception(
-            'The property "'.$name.'" does not exist in class "'.static::class.'"'
-        );
-    }
+    private $saveQuietly = false;
 
     /**
      * Get a fresh instance of this class.
@@ -80,7 +68,7 @@ class DuplicateOptions
     /**
      * Set the $excludedColumns to work with in the Neurony\Duplicate\Traits\HasDuplicates trait.
      *
-     * @param array|string $columns
+     * @param  array|string     $columns
      * @return DuplicateOptions
      */
     public function excludeColumns(...$columns): self
@@ -93,7 +81,7 @@ class DuplicateOptions
     /**
      * Set the $uniqueColumns to work with in the Neurony\Duplicate\Traits\HasDuplicates trait.
      *
-     * @param array|string $columns
+     * @param  array|string     $columns
      * @return DuplicateOptions
      */
     public function uniqueColumns(...$columns): self
@@ -106,7 +94,7 @@ class DuplicateOptions
     /**
      * Set the $excludedRelations to work with in the Neurony\Duplicate\Traits\HasDuplicates trait.
      *
-     * @param array|string $relations
+     * @param  array|string     $relations
      * @return DuplicateOptions
      */
     public function excludeRelations(...$relations): self
@@ -122,7 +110,7 @@ class DuplicateOptions
      * Param $columns:
      * --- associative array with keys containing each relation name and values (array) containing the excluded columns for each relation.
      *
-     * @param array $columns
+     * @param  array            $columns
      * @return DuplicateOptions
      */
     public function excludeRelationColumns(array $columns = []): self
@@ -138,7 +126,7 @@ class DuplicateOptions
      * Param $columns:
      * --- associative array with keys containing each relation name and values (array) containing the unique columns for each relation.
      *
-     * @param array $columns
+     * @param  array            $columns
      * @return DuplicateOptions
      */
     public function uniqueRelationColumns(array $columns = []): self
@@ -158,5 +146,36 @@ class DuplicateOptions
         $this->shouldDuplicateDeeply = false;
 
         return $this;
+    }
+
+    /**
+     * ...
+     *
+     * @param  array|string     $relations
+     * @return DuplicateOptions
+     */
+    public function saveQuietly(): self
+    {
+        $this->saveQuietly = true;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of a property of this class.
+     *
+     * @param $name
+     * @return mixed
+     * @throws \Exception
+     */
+    public function __get($name)
+    {
+        if (property_exists(static::class, $name)) {
+            return $this->{$name};
+        }
+
+        throw new \Exception(
+            'The property "' . $name . '" does not exist in class "' . static::class . '"'
+        );
     }
 }
